@@ -1,4 +1,4 @@
-# drm-composer — outline
+# drm_composer — outline
 
 `drm_composer` is the **stateless high-level translator**. It compiles a
 declarative scene (an HTML-like subset) into the command + bitmap calls that
@@ -12,7 +12,7 @@ These boundaries are the whole point of the split — keep them sharp:
 
 - It does **not** own or persist layer buffers. → `drm_screen` does.
 - It does **not** blend the final screen. → `drm_screen`'s `Composer` does.
-- It does **not** know DRM/KMS. → `drm-display` does.
+- It does **not** know DRM/KMS. → `drm_display` does.
 
 `drm_composer` holds no screen state between calls. Given the same scene it
 emits the same commands.
