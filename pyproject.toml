@@ -5,18 +5,22 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "drm-composer"
 version = "0.1.0"
-description = "Stateless screen-HTML compiler: scene markup -> drm_screen command batches + RGBA bitmaps"
+description = "HTML-to-screen compiler for Raspberry Pi and embedded Linux: scene markup -> drm_screen layer commands + RGBA bitmaps"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 dependencies = ["numpy", "pillow", "drm-screen"]
-keywords = ["drm", "html", "scene", "compositor", "embedded", "display"]
+keywords = [
+    "drm", "kms", "html", "scene", "compositor", "display", "signage",
+    "raspberry-pi", "raspberrypi", "embedded", "sbc", "kiosk", "linux",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Topic :: Multimedia :: Graphics",
+    "Topic :: System :: Hardware",
 ]
 
 [project.urls]

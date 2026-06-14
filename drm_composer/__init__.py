@@ -10,7 +10,13 @@ from .parser import parse_scene
 from .painter import paint_scene
 from .compositor import Compositor
 
+from importlib.metadata import version, PackageNotFoundError
+try:
+    __version__ = version("drm-composer")
+except PackageNotFoundError:
+    __version__ = "unknown"
+
 __all__ = [
     "Scene", "LayerNode", "BoxNode", "TextNode", "ImageNode",
-    "parse_scene", "paint_scene", "Compositor",
+    "parse_scene", "paint_scene", "Compositor", "__version__",
 ]
