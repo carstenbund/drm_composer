@@ -232,6 +232,7 @@ Pastes an image file, alpha-composited onto the layer. Must be inside a
 | `w`   | int    | native width   | Target width — see resize rule below |
 | `h`   | int    | native height  | Target height — see resize rule below |
 | `fit` | string | `fill`         | How to fit into `w`×`h`: `fill` / `contain` / `cover` |
+| `fullscreen` | bool | `false`   | If set, the image is tappable → emits a `full:<src>` hit |
 
 Behaviour:
 
@@ -253,6 +254,11 @@ Behaviour:
   - `cover` — scale so the image **covers** `w`×`h`, aspect kept; the overflow is
     centre-**cropped**.
   An unrecognized `fit` value behaves as `fill`.
+- **`fullscreen`** (boolean, needs `w`/`h`) adds a transparent interactive layer
+  over the image, `hit_id` = `full:<src>`. The image is painted normally; the
+  overlay just makes it tappable so the host can show it fullscreen. A bare
+  `fullscreen` attribute is true; `fullscreen="false"` is false. Routed by
+  `drm_composer.actions` as `Action(kind="fullscreen", target=<src>)`.
 
 ```html
 <img src="/opt/kiosk/logo.png" x="240" y="20" w="64" h="64" />
@@ -372,6 +378,7 @@ The `hit_id` grammar is `kind:payload` (a bare id with no recognized prefix is a
 | `hit_id` | `parse_action(...)` | Emitted by |
 |---|---|---|
 | `href:settings.html` | `Action("navigate", target="settings.html")` | `<a href>` |
+| `full:/photos/a.jpg` | `Action("fullscreen", target="/photos/a.jpg")` | `<img fullscreen>` |
 | `quit` (bare) | `Action("action", target="quit")` | `<button id>` |
 | `cmd:reboot` | `Action("command", target="reboot")` | *(no tag yet — reserved)* |
 | `play:/media/clip.mp4` | `Action("play", target="/media/clip.mp4")` | *(no tag yet — reserved)* |

@@ -65,6 +65,18 @@ def _bool(attrs, key, default=True):
     return v.strip().lower() not in ("false", "0", "no", "hidden")
 
 
+def _flag(attrs, key, default=False):
+    """HTML boolean attribute: present (even bare/empty) = True, unless explicitly
+    false-ish.  `<img fullscreen>`, `fullscreen=""`, `fullscreen="true"` -> True;
+    `fullscreen="false"` / `"0"` / `"no"` / `"off"` -> False; absent -> default."""
+    if key not in attrs:
+        return default
+    v = attrs[key]
+    if v is None:
+        return True
+    return v.strip().lower() not in ("false", "0", "no", "off")
+
+
 class _SceneParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -107,6 +119,7 @@ class _SceneParser(HTMLParser):
                 x=self._w(a, "x"), y=self._h(a, "y"),
                 w=self._w(a, "w", None), h=self._h(a, "h", None),
                 fit=a.get("fit", "fill").strip().lower(),
+                fullscreen=_flag(a, "fullscreen"),
             ))
         elif tag == "text":
             self._require_layer(tag)

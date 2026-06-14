@@ -73,10 +73,17 @@ def paint_scene(scene: Scene) -> list:
             data=np.ascontiguousarray(rgba).tobytes(),
         ))
 
-        # Each <button> -> its own interactive layer (hit_id = id).
+        # Interactive overlays sit above the painted layer:
+        #   <button>/<a> -> a drawn interactive layer
+        #   <img fullscreen> -> a transparent interactive layer (hit_id full:<src>)
         for node in layer.children:
             if isinstance(node, ButtonNode):
                 batch.extend(_paint_button(node, layer.z))
+            elif isinstance(node, ImageNode) and node.fullscreen and node.w and node.h:
+                batch.append(CreateLayer(
+                    "full:" + node.src, node.w, node.h, x=node.x, y=node.y,
+                    z=layer.z + _BUTTON_Z_OFFSET, interactive=True,
+                    hit_id="full:" + node.src))   # transparent: no PlaceRawBuffer
 
     return batch
 

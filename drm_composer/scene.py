@@ -34,6 +34,7 @@ class ImageNode:
     w: int | None = None       # None -> native size
     h: int | None = None
     fit: str = "fill"          # fill (stretch) | contain (letterbox) | cover (crop)
+    fullscreen: bool = False   # tappable -> emits a `full:<src>` hit over the image
 
 
 @dataclass

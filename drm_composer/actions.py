@@ -31,6 +31,7 @@ _PREFIXES = {
     "cmd": "command",
     "play": "play",
     "set": "set",
+    "full": "fullscreen",
 }
 
 
@@ -88,6 +89,7 @@ class Dispatcher:
     def __init__(self, logger=None):
         self._navigate = None
         self._play = None
+        self._fullscreen = None
         self._commands: dict[str, callable] = {}
         self._sets: dict[str, callable] = {}
         self._actions: dict[str, callable] = {}
@@ -103,6 +105,11 @@ class Dispatcher:
     def on_play(self, fn):
         """Handler for ``play:`` hits — called as ``fn(target)`` (the media src)."""
         self._play = fn
+        return self
+
+    def on_fullscreen(self, fn):
+        """Handler for ``full:`` hits — called as ``fn(target)`` (the image src)."""
+        self._fullscreen = fn
         return self
 
     def on_command(self, name, fn):
@@ -137,6 +144,8 @@ class Dispatcher:
             return self._call(self._navigate, action, action.target)
         if action.kind == "play":
             return self._call(self._play, action, action.target)
+        if action.kind == "fullscreen":
+            return self._call(self._fullscreen, action, action.target)
         if action.kind == "command":
             return self._call(self._commands.get(action.target), action)
         if action.kind == "set":
