@@ -21,7 +21,12 @@ drm_composer  →  drm_screen  →  drm-display
 It holds **no** screen state, does **not** blend the final frame (that's
 `drm_screen`'s compositor), and does **not** know DRM/KMS (that's `drm_display`).
 
-See [outline.md](outline.md) for the design.
+## Documentation
+
+- **[SYNTAX.md](SYNTAX.md)** — complete screen-HTML reference: every element,
+  every attribute, accepted value formats, and behaviour. **Start here to write
+  scenes.**
+- [outline.md](outline.md) — the design and where this package sits in the stack.
 
 ## Install
 
