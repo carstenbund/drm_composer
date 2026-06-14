@@ -22,3 +22,34 @@ It holds **no** screen state, does **not** blend the final frame (that's
 `drm_screen`'s compositor), and does **not** know DRM/KMS (that's `drm_display`).
 
 See [outline.md](outline.md) for the design.
+
+## Install
+
+```bash
+pip install drm-composer    # also pulls in drm-screen and drm-display
+```
+
+Installing `drm-composer` brings the whole rendering chain with it — one install
+gets you HTML → screen.
+
+## Part of the drm_stack
+
+Each package installs and runs on its own:
+
+| Package | Role |
+|---|---|
+| **`drm-composer`** | screen-HTML → layer commands · *this package* |
+| [`drm-screen`](https://github.com/carstenbund/drm_screen) | layers → composited frame |
+| [`drm-display`](https://github.com/carstenbund/drm_display) | frame → DRM/KMS pixels |
+
+Full stack, bootstrap, and integration demo:
+[`drm_stack`](https://github.com/carstenbund/drm_stack).
+
+## License
+
+**GPL-3.0-or-later** (see [LICENSE](LICENSE)). Use it freely under the GPL. For
+proprietary/closed use that cannot comply with the GPL, a separate commercial
+license is available — contact Carsten Bund <carstenbund@gmail.com>.
+
+Dependencies are permissive (BSD/MIT) and installed separately; their notices
+are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).

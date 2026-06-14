@@ -8,7 +8,9 @@ version = "0.1.0"
 description = "HTML-to-screen compiler for Raspberry Pi and embedded Linux: scene markup -> drm_screen layer commands + RGBA bitmaps"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_LICENSES.md"]
+authors = [{ name = "Carsten Bund", email = "carstenbund@gmail.com" }]
 dependencies = ["numpy", "pillow", "drm-screen"]
 keywords = [
     "drm", "kms", "html", "scene", "compositor", "display", "signage",
