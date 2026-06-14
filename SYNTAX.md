@@ -22,6 +22,8 @@ implemented](#not-yet-implemented).
 | [`<box>`](#box)    | inside `<layer>` | A filled rectangle | yes |
 | [`<text>`](#text)   | inside `<layer>` | A line of text (content = element text) | no — needs a close tag |
 | [`<img>`](#img)    | inside `<layer>` | A PNG/JPEG/etc. pasted from a file | yes |
+| [`<button>`](#button) | inside `<layer>` | An interactive button — a click yields a `hit_id` (an action) | no — needs a close tag |
+| [`<a>`](#a)      | inside `<layer>` | An interactive link — navigates (`hit_id` = `href:…`) | no — needs a close tag |
 
 A minimal valid document:
 
@@ -238,6 +240,75 @@ Behaviour:
 
 ---
 
+### `<button>`
+
+An interactive button. Must be inside a `<layer>` (else `ValueError: <button>
+outside <layer>`). **Not self-closing** — the label is the character data between
+`<button>` and `</button>`, `.strip()`-ed.
+
+Unlike box/text/img (which are painted *into* their layer), a `<button>` becomes
+its **own** interactive `drm_screen` layer, so `drm_screen.hit_test(x, y)` can
+report which button a pointer is over.
+
+| Attribute | Type | Default | Meaning |
+|---|---|---|---|
+| `id`         | string | **required** | The button's `hit_id` (what `hit_test` returns) and its layer name |
+| `x`          | int    | `0`          | Left edge (screen-absolute) |
+| `y`          | int    | `0`          | Top edge (screen-absolute) |
+| `w`          | int    | `0`          | Width in pixels |
+| `h`          | int    | `0`          | Height in pixels |
+| `color`      | string | `#3060a0ff`  | Fill color (see [Colors](#colors)) |
+| `text-color` | string | `#ffffffff`  | Label color (note the hyphen) |
+| `size`       | int    | `28`         | Label font size |
+
+Behaviour:
+
+- **`id` is mandatory.** A `<button>` without `id` raises `KeyError: 'id'`.
+- Compiles to its own `CreateLayer(name=id, …, interactive=True, hit_id=id)` plus
+  a `PlaceRawBuffer`, emitted at **z = the parent layer's z + 1000** so buttons
+  sit above their layer's painted content.
+- Rendered as a **rounded rectangle** (corner radius 12px) filled with `color`,
+  the label centered in `text-color`.
+- `w`/`h` default to `0` — set them, or the button is a zero-area (untappable)
+  layer.
+- `drm_screen` only reports the `hit_id`; the **app** decides what a hit means.
+
+```html
+<button id="ok" x="40" y="120" w="160" h="56" color="#2a7d4f">OK</button>
+```
+
+---
+
+### `<a>`
+
+A navigation link. Identical to `<button>` in every way **except** it carries an
+`href` instead of an `id`, and its `hit_id` becomes `href:<href>`. It reuses the
+exact same interactive-layer machinery — a link is a button whose action is
+"navigate". This mirrors real HTML: `<a>` navigates, `<button>` performs an action.
+
+| Attribute | Type | Default | Meaning |
+|---|---|---|---|
+| `href`       | string | **required** | Navigation target; becomes `hit_id` `href:<href>` and the layer name |
+| `x` `y` `w` `h` | int | `0` | Geometry — exactly as `<button>` |
+| `color`      | string | `#3060a0ff`  | Fill color |
+| `text-color` | string | `#ffffffff`  | Label color |
+| `size`       | int    | `28`         | Label font size |
+
+Behaviour:
+
+- **`href` is mandatory.** An `<a>` without `href` raises `KeyError: 'href'`.
+- Compiles exactly like a `<button>` (rounded rect + centered label, its own
+  interactive layer at z+1000), with `hit_id = "href:" + href`.
+- `drm_composer` does **not** interpret the href — it just hands the app a
+  `hit_id` of `href:<href>`. The app maps it to a page (load a file, look up a
+  page, …).
+
+```html
+<a href="settings.html" x="40" y="200" w="220" h="56">Settings</a>
+```
+
+---
+
 ## What a scene compiles to
 
 Each `<layer>` produces exactly two `drm_screen` commands, in this order:
@@ -252,6 +323,19 @@ PlaceRawBuffer(name=<id>, width=<screen w>, height=<screen h>, data=<RGBA bytes>
 layer buffers, composites them by `z`, and pushes the result to `drm-display`.
 The single RGBA→BGRA conversion happens downstream in `drm_screen`'s backend —
 everything `drm_composer` emits is RGBA.
+
+A `<button>` or `<a>` adds **two more** commands — its own interactive layer,
+emitted right after its parent layer's pair:
+
+```python
+CreateLayer(name=<id | "href:"+href>, width=<w>, height=<h>, x=<x>, y=<y>,
+            z=<layer z>+1000, interactive=True, hit_id=<id | "href:"+href>)
+PlaceRawBuffer(name=…, width=<w>, height=<h>, data=<RGBA button bitmap>)
+```
+
+So the batch grows by two commands per interactive element. `drm_screen.hit_test`
+walks the interactive layers top-down by `z` and returns the `hit_id` under a
+point; the app routes it (e.g. an action id, or a `href:` link to a page).
 
 You can inspect the batch without a display:
 
@@ -307,15 +391,17 @@ headless end-to-end run.
 |---|---|
 | No `<screen>` in the document | `ValueError: no <screen> element found` |
 | `<layer>` not inside `<screen>` | `ValueError: <layer> outside <screen>` |
-| `<box>` / `<text>` / `<img>` not inside `<layer>` | `ValueError: <tag> outside <layer>` |
+| `<box>` / `<text>` / `<img>` / `<button>` / `<a>` not inside `<layer>` | `ValueError: <tag> outside <layer>` |
 | `<img>` without `src` | `KeyError: 'src'` |
+| `<button>` without `id` | `KeyError: 'id'` |
+| `<a>` without `href` | `KeyError: 'href'` |
 | Non-integer numeric value (`"20px"`, `"50%"`, `"1.5"`, `""`) | `ValueError` (from `int()`) |
 | Unrecognized `color` | `ValueError: bad color '<value>'` |
 | `<img src="…">` pointing at a missing/unreadable file | `FileNotFoundError` / `PIL.UnidentifiedImageError` |
 
 **Silently ignored (no error):**
 
-- **Unknown elements** — any tag that isn't one of the five above is dropped.
+- **Unknown elements** — any tag that isn't one of the seven above is dropped.
   This includes `<raw-buffer>` (see below).
 - **Unknown attributes** — e.g. `opacity`, `id` on a `<box>`, `style`, classes.
   They are parsed but never read.
