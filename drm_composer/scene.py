@@ -36,11 +36,25 @@ class ImageNode:
 
 
 @dataclass
+class ButtonNode:
+    """An interactive region: compiled to its own interactive layer (hit_id=id)."""
+    id: str
+    x: int = 0
+    y: int = 0
+    w: int = 0
+    h: int = 0
+    color: str = "#3060a0ff"        # button fill
+    text_color: str = "#ffffffff"
+    size: int = 28
+    label: str = ""                  # character data inside <button>...</button>
+
+
+@dataclass
 class LayerNode:
     id: str
     z: int = 0
     visible: bool = True
-    children: list = field(default_factory=list)   # BoxNode | TextNode | ImageNode
+    children: list = field(default_factory=list)   # Box/Text/Img/Button nodes
 
 
 @dataclass

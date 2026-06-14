@@ -16,7 +16,7 @@ html.parser — no external dependency.
 
 from html.parser import HTMLParser
 
-from .scene import Scene, LayerNode, BoxNode, TextNode, ImageNode
+from .scene import Scene, LayerNode, BoxNode, TextNode, ImageNode, ButtonNode
 
 
 def _int(attrs, key, default=None):
@@ -36,7 +36,8 @@ class _SceneParser(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.scene: Scene | None = None
         self._layer: LayerNode | None = None
-        self._text: TextNode | None = None   # open <text> collecting char data
+        self._text: TextNode | None = None     # open <text> collecting char data
+        self._button: ButtonNode | None = None  # open <button> collecting its label
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -74,15 +75,31 @@ class _SceneParser(HTMLParser):
                 color=a.get("color", "#ffffffff"),
             )
             self._layer.children.append(self._text)
+        elif tag == "button":
+            self._require_layer(tag)
+            self._button = ButtonNode(
+                id=a["id"],
+                x=_int(a, "x", 0), y=_int(a, "y", 0),
+                w=_int(a, "w", 0), h=_int(a, "h", 0),
+                color=a.get("color", "#3060a0ff"),
+                text_color=a.get("text-color", "#ffffffff"),
+                size=_int(a, "size", 28),
+            )
+            self._layer.children.append(self._button)
 
     def handle_data(self, data):
         if self._text is not None:
             self._text.text += data
+        elif self._button is not None:
+            self._button.label += data
 
     def handle_endtag(self, tag):
         if tag == "text" and self._text is not None:
             self._text.text = self._text.text.strip()
             self._text = None
+        elif tag == "button" and self._button is not None:
+            self._button.label = self._button.label.strip()
+            self._button = None
         elif tag == "layer":
             self._layer = None
 

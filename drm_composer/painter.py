@@ -14,7 +14,10 @@ from PIL import Image, ImageDraw, ImageFont
 
 from drm_screen.commands import CreateLayer, PlaceRawBuffer
 
-from .scene import Scene, BoxNode, TextNode, ImageNode
+from .scene import Scene, BoxNode, TextNode, ImageNode, ButtonNode
+
+# Buttons sit above their layer's painted content (but well below the pointer).
+_BUTTON_Z_OFFSET = 1000
 
 
 def _rgba(color: str) -> tuple[int, int, int, int]:
@@ -58,6 +61,7 @@ def paint_scene(scene: Scene) -> list:
                           fill=_rgba(node.color), font=_font(node.size))
             elif isinstance(node, ImageNode):
                 _paste_image(canvas, node)
+            # ButtonNode is NOT painted here — it becomes its own interactive layer
 
         rgba = np.asarray(canvas, dtype=np.uint8)
         batch.append(CreateLayer(layer.id, W, H, z=layer.z, visible=layer.visible))
@@ -66,7 +70,35 @@ def paint_scene(scene: Scene) -> list:
             data=np.ascontiguousarray(rgba).tobytes(),
         ))
 
+        # Each <button> -> its own interactive layer (hit_id = id).
+        for node in layer.children:
+            if isinstance(node, ButtonNode):
+                batch.extend(_paint_button(node, layer.z))
+
     return batch
+
+
+def _button_bitmap(node: ButtonNode) -> np.ndarray:
+    img = Image.new("RGBA", (node.w, node.h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle([0, 0, node.w - 1, node.h - 1], radius=12,
+                        fill=_rgba(node.color))
+    if node.label:
+        f = _font(node.size)
+        tw = d.textlength(node.label, font=f)
+        d.text(((node.w - tw) / 2, (node.h - node.size) / 2 - 2),
+               node.label, fill=_rgba(node.text_color), font=f)
+    return np.asarray(img, dtype=np.uint8)
+
+
+def _paint_button(node: ButtonNode, layer_z: int) -> list:
+    rgba = _button_bitmap(node)
+    return [
+        CreateLayer(node.id, node.w, node.h, x=node.x, y=node.y,
+                    z=layer_z + _BUTTON_Z_OFFSET, interactive=True, hit_id=node.id),
+        PlaceRawBuffer(name=node.id, width=node.w, height=node.h,
+                       data=np.ascontiguousarray(rgba).tobytes()),
+    ]
 
 
 def _paste_image(canvas: Image.Image, node: ImageNode):
