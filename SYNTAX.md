@@ -232,7 +232,7 @@ Pastes an image file, alpha-composited onto the layer. Must be inside a
 | `w`   | int    | native width   | Target width — see resize rule below |
 | `h`   | int    | native height  | Target height — see resize rule below |
 | `fit` | string | `fill`         | How to fit into `w`×`h`: `fill` / `contain` / `cover` |
-| `fullscreen` | bool | `false`   | If set, the image is tappable → emits a `full:<src>` hit |
+| `fullscreen` | enum | `off`     | `toggle` (tap → `full:<src>` hit) or `always` (drawn fullscreen) |
 
 Behaviour:
 
@@ -254,11 +254,15 @@ Behaviour:
   - `cover` — scale so the image **covers** `w`×`h`, aspect kept; the overflow is
     centre-**cropped**.
   An unrecognized `fit` value behaves as `fill`.
-- **`fullscreen`** (boolean, needs `w`/`h`) adds a transparent interactive layer
-  over the image, `hit_id` = `full:<src>`. The image is painted normally; the
-  overlay just makes it tappable so the host can show it fullscreen. A bare
-  `fullscreen` attribute is true; `fullscreen="false"` is false. Routed by
-  `drm_composer.actions` as `Action(kind="fullscreen", target=<src>)`.
+- **`fullscreen`** has two modes (a bare `fullscreen` attribute means `toggle`):
+  - **`toggle`** (needs `w`/`h`) — the image is drawn at its geometry *and* gets a
+    transparent interactive overlay, `hit_id` = `full:<src>`, so a tap lets the
+    host expand it. Routed by `drm_composer.actions` as
+    `Action(kind="fullscreen", target=<src>)`.
+  - **`always`** — the image is drawn **fullscreen from the source**, covering the
+    whole layer and **ignoring `x/y/w/h`** (with `fit` still applied). No overlay;
+    it is not toggle-able. Use this to declare a fullscreen image directly in HTML.
+  - `fullscreen="false"` / `"0"` / `"no"` / `"off"` (or absent) = off.
 
 ```html
 <img src="/opt/kiosk/logo.png" x="240" y="20" w="64" h="64" />

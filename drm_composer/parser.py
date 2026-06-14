@@ -65,16 +65,21 @@ def _bool(attrs, key, default=True):
     return v.strip().lower() not in ("false", "0", "no", "hidden")
 
 
-def _flag(attrs, key, default=False):
-    """HTML boolean attribute: present (even bare/empty) = True, unless explicitly
-    false-ish.  `<img fullscreen>`, `fullscreen=""`, `fullscreen="true"` -> True;
-    `fullscreen="false"` / `"0"` / `"no"` / `"off"` -> False; absent -> default."""
-    if key not in attrs:
-        return default
-    v = attrs[key]
-    if v is None:
-        return True
-    return v.strip().lower() not in ("false", "0", "no", "off")
+def _fullscreen(attrs):
+    """img `fullscreen` mode: '' (off) | 'toggle' | 'always'.
+
+    Bare `fullscreen` (or `="toggle"`, `="true"`, `="on"`) -> 'toggle' (tap to
+    expand). `="always"` -> drawn fullscreen from the source. `="false"`/`"0"`/
+    `"no"`/`"off"` or absent -> '' (off)."""
+    if "fullscreen" not in attrs:
+        return ""
+    v = attrs["fullscreen"]
+    if v is None:                       # bare attribute
+        return "toggle"
+    v = v.strip().lower()
+    if v in ("false", "0", "no", "off"):
+        return ""
+    return "always" if v == "always" else "toggle"
 
 
 class _SceneParser(HTMLParser):
@@ -119,7 +124,7 @@ class _SceneParser(HTMLParser):
                 x=self._w(a, "x"), y=self._h(a, "y"),
                 w=self._w(a, "w", None), h=self._h(a, "h", None),
                 fit=a.get("fit", "fill").strip().lower(),
-                fullscreen=_flag(a, "fullscreen"),
+                fullscreen=_fullscreen(a),
             ))
         elif tag == "text":
             self._require_layer(tag)

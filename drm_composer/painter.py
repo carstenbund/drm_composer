@@ -79,7 +79,8 @@ def paint_scene(scene: Scene) -> list:
         for node in layer.children:
             if isinstance(node, ButtonNode):
                 batch.extend(_paint_button(node, layer.z))
-            elif isinstance(node, ImageNode) and node.fullscreen and node.w and node.h:
+            elif (isinstance(node, ImageNode) and node.fullscreen == "toggle"
+                  and node.w and node.h):
                 batch.append(CreateLayer(
                     "full:" + node.src, node.w, node.h, x=node.x, y=node.y,
                     z=layer.z + _BUTTON_Z_OFFSET, interactive=True,
@@ -112,14 +113,19 @@ def _paint_button(node: ButtonNode, layer_z: int) -> list:
 
 
 def _paste_image(canvas: Image.Image, node: ImageNode):
+    # fullscreen="always" draws over the whole layer, ignoring x/y/w/h.
+    if node.fullscreen == "always":
+        x, y, w, h = 0, 0, canvas.width, canvas.height
+    else:
+        x, y, w, h = node.x, node.y, node.w, node.h
     try:
         img = Image.open(node.src).convert("RGBA")
     except OSError:   # missing / unreadable / not an image — draw a placeholder
-        _paste_placeholder(canvas, node)
+        _paste_placeholder(canvas, x, y, w, h, node.src)
         return
-    if node.w and node.h:
-        img = _fit_image(img, node.w, node.h, node.fit)
-    canvas.alpha_composite(img, (node.x, node.y))
+    if w and h:
+        img = _fit_image(img, w, h, node.fit)
+    canvas.alpha_composite(img, (x, y))
 
 
 def _fit_image(img: Image.Image, w: int, h: int, fit: str) -> Image.Image:
@@ -145,14 +151,14 @@ def _fit_image(img: Image.Image, w: int, h: int, fit: str) -> Image.Image:
     return img.resize((w, h))   # fill
 
 
-def _paste_placeholder(canvas: Image.Image, node: ImageNode):
+def _paste_placeholder(canvas, x, y, w, h, src):
     """A 'broken image' box (like a browser) so a missing src never crashes."""
-    w, h = node.w or 320, node.h or 180
+    w, h = w or 320, h or 180
     d = ImageDraw.Draw(canvas)
-    d.rectangle([node.x, node.y, node.x + w - 1, node.y + h - 1],
+    d.rectangle([x, y, x + w - 1, y + h - 1],
                 fill=(40, 44, 52, 255), outline=(90, 96, 110, 255), width=2)
-    name = os.path.basename(node.src)
+    name = os.path.basename(src)
     f = _font(max(12, min(28, h // 6)))
     tw = d.textlength(name, font=f)
-    d.text((node.x + (w - tw) / 2, node.y + h / 2 - 12), name,
+    d.text((x + (w - tw) / 2, y + h / 2 - 12), name,
            fill=(150, 160, 175, 255), font=f)
