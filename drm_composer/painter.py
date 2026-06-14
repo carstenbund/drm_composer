@@ -9,6 +9,8 @@ Channel order is RGBA throughout; the single RGBA->BGRA conversion happens far
 downstream in drm_screen's backend.
 """
 
+import os
+
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageColor
 
@@ -103,7 +105,24 @@ def _paint_button(node: ButtonNode, layer_z: int) -> list:
 
 
 def _paste_image(canvas: Image.Image, node: ImageNode):
-    img = Image.open(node.src).convert("RGBA")
+    try:
+        img = Image.open(node.src).convert("RGBA")
+    except OSError:   # missing / unreadable / not an image — draw a placeholder
+        _paste_placeholder(canvas, node)
+        return
     if node.w and node.h:
         img = img.resize((node.w, node.h))
     canvas.alpha_composite(img, (node.x, node.y))
+
+
+def _paste_placeholder(canvas: Image.Image, node: ImageNode):
+    """A 'broken image' box (like a browser) so a missing src never crashes."""
+    w, h = node.w or 320, node.h or 180
+    d = ImageDraw.Draw(canvas)
+    d.rectangle([node.x, node.y, node.x + w - 1, node.y + h - 1],
+                fill=(40, 44, 52, 255), outline=(90, 96, 110, 255), width=2)
+    name = os.path.basename(node.src)
+    f = _font(max(12, min(28, h // 6)))
+    tw = d.textlength(name, font=f)
+    d.text((node.x + (w - tw) / 2, node.y + h / 2 - 12), name,
+           fill=(150, 160, 175, 255), font=f)

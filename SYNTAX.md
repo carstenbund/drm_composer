@@ -235,6 +235,8 @@ Pastes an image file, alpha-composited onto the layer. Must be inside a
 Behaviour:
 
 - **`src` is mandatory.** An `<img>` without `src` raises `KeyError: 'src'`.
+- **A missing or unreadable file does not crash** — like a browser, it renders a
+  "broken image" placeholder box (with the filename) at the element's geometry.
 - `src` is opened with Pillow, so any Pillow-supported format works (PNG, JPEG,
   BMP, GIF…). It is converted to RGBA, so PNG transparency is preserved.
 - The path is resolved by the **process running the compositor**, relative to its
@@ -406,7 +408,6 @@ headless end-to-end run.
 | `<img>` without `src` | `KeyError: 'src'` |
 | `<button>` without `id` | `KeyError: 'id'` |
 | `<a>` without `href` | `KeyError: 'href'` |
-| `<img src="…">` pointing at a missing/unreadable file | `FileNotFoundError` / `PIL.UnidentifiedImageError` |
 
 **Silently ignored (no error):**
 
