@@ -52,11 +52,47 @@ class ButtonNode:
 
 
 @dataclass
+class AnimateNode:
+    """One phase of one property, over time.
+
+    The same element SVG/SMIL uses, and the same meaning: the property moves
+    from `frm` to `to` between `start` and `start + duration`, along `easing`.
+    Held by the node it animates, or given an explicit `target`.
+    """
+    target: str = ""
+    property: str = "progress"
+    frm: float = 0.0
+    to: float = 1.0
+    start: int = 0
+    duration: int = 1000
+    easing: str = "linear"
+
+
+@dataclass
+class PathNode:
+    """A stroked path — content that is still a description when it reaches the
+    panel, so it can be drawn *part* way.
+
+    `progress` is the fraction of the path's ordered length that has been drawn:
+    animate it and the line draws itself. A layer holding paths compiles to a
+    scene rather than to a bitmap; see `scene_ir.py`.
+    """
+    id: str
+    d: str
+    stroke: str = "#ffffffff"
+    stroke_width: float = 2.0
+    fill: str = ""
+    progress: float = 1.0
+    opacity: float = 1.0
+    animations: list = field(default_factory=list)   # AnimateNode
+
+
+@dataclass
 class LayerNode:
     id: str
     z: int = 0
     visible: bool = True
-    children: list = field(default_factory=list)   # Box/Text/Img/Button nodes
+    children: list = field(default_factory=list)   # Box/Text/Img/Button/Path nodes
 
 
 @dataclass

@@ -24,6 +24,8 @@ implemented](#not-yet-implemented).
 | [`<img>`](#img)    | inside `<layer>` | A PNG/JPEG/etc. pasted from a file | yes |
 | [`<button>`](#button) | inside `<layer>` | An interactive button — a click yields a `hit_id` (an action) | no — needs a close tag |
 | [`<a>`](#a)      | inside `<layer>` | An interactive link — navigates (`hit_id` = `href:…`) | no — needs a close tag |
+| [`<path>`](#path)   | inside `<layer>` | A stroked path — stays primitives all the way to the panel | either — wraps `<animate>` |
+| [`<animate>`](#animate) | inside `<path>`, or `<layer>` with `target` | Moves one property over time | yes |
 
 A minimal valid document:
 
@@ -346,6 +348,67 @@ Behaviour:
 
 ---
 
+### `<path>`
+
+A stroked path. Unlike every other element, it is **not rasterized here**: a
+layer containing paths compiles to a *scene document* (`PlaceScene`) and the
+content stays primitives all the way to the panel. That is what allows
+`progress` — the fraction of the path that has been drawn — to be animated, so a
+line draws itself rather than appearing.
+
+```html
+<layer id="ink" z="20">
+  <path id="rule" d="M 60 240 L 740 240" stroke="#e8e8f0" stroke-width="4" progress="0">
+    <animate property="progress" from="0" to="1" start="0" duration="3000" />
+  </path>
+</layer>
+```
+
+| Attribute | Default | Notes |
+|---|---|---|
+| `id` | `path<N>` | names the object; what `<animate target=…>` refers to |
+| `d` | `""` | path data, SVG's `d` grammar (`M`, `L`, `C`, `Z`, …) |
+| `stroke` | `#ffffffff` | full CSS colour range; reaches the renderer as `#rrggbb` |
+| `stroke-width` | `2` | fractional — not rounded to whole pixels |
+| `fill` | *(none)* | omitted means an unfilled stroke |
+| `progress` | `1` | 0 = not drawn yet, 1 = fully drawn |
+| `opacity` | `1` | |
+
+Coordinates are in the `<screen>`'s own units and are *not* resolved to panel
+pixels here: the document carries its design size, and the renderer fits it. One
+document is therefore correct on a 450×250 LCD and on a 1920×1080 screen.
+
+**A layer holds pixels or primitives, not both.** Mixing a `<box>` and a
+`<path>` in one layer raises — put them in adjacent layers, which is free.
+
+**Needs a renderer with the `scene` capability** (e.g. `drm_screen_lvgl`). The
+RGBA compositor raises `UnsupportedCommand` rather than showing nothing.
+
+---
+
+### `<animate>`
+
+One phase of one property over time — the SMIL/SVG element, with its meaning.
+Inside a `<path>` it animates that path; loose in a `<layer>` it must name a
+`target`.
+
+```html
+<animate property="progress" from="0" to="1" start="0" duration="3000" easing="linear" />
+```
+
+| Attribute | Default | Notes |
+|---|---|---|
+| `target` | the enclosing `<path>`'s id | required when used outside a `<path>` |
+| `property` | `progress` | what moves — `progress`, `opacity`, … as the renderer supports |
+| `from` / `to` | `0` / `1` | fractional values, not pixels |
+| `start` | `0` | milliseconds from the start of the scene |
+| `duration` | `1000` | milliseconds |
+| `easing` | `linear` | the curve name the renderer knows |
+
+The scene lasts until the last animation stops: `max(start + duration)`.
+
+---
+
 ## What a scene compiles to
 
 Each `<layer>` produces exactly two `drm_screen` commands, in this order:
@@ -354,6 +417,19 @@ Each `<layer>` produces exactly two `drm_screen` commands, in this order:
 CreateLayer(name=<id>, width=<screen w>, height=<screen h>, z=<z>, visible=<visible>)
 PlaceRawBuffer(name=<id>, width=<screen w>, height=<screen h>, data=<RGBA bytes>)
 ```
+
+A layer of `<path>` elements compiles to a different pair — a description
+rather than a bitmap:
+
+```python
+CreateLayer(name=<id>, width=<screen w>, height=<screen h>, z=<z>, visible=<visible>)
+PlaceScene(name=<id>, scene=<drm_scene_ir JSON bytes>)
+```
+
+The document holds the objects and the animations that move them; the renderer
+evaluates it against the clock every frame and draws it at the panel's own
+resolution. It is sent once, and it is small — a few hundred bytes of path data
+against megabytes for the same picture rasterized, every frame.
 
 `data` is the fully rasterized layer canvas: `width*height*4` bytes of
 **RGBA8888** (boxes, text, and images already drawn in). `drm_screen` owns the
@@ -503,6 +579,12 @@ a handler exists:
   [Value formats](#value-formats-read-this-first).)
 - **`%` on `z` / `size` / screen `width` / `height`** — taken as the bare number,
   not resolved (there is no screen reference for those attributes).
+- **`<symbol src="…svg">`** — a path layer takes `d` data directly today. Loading
+  an SVG (and reducing it to ordered stroke data) is a converter's job, not the
+  parser's; until one lands, emit `<path d="…">` from your tooling.
+- **Transforms and deformations on a path** — `translate`/`rotate`/`scale`, and
+  the wave/helix deformations the renderer supports, are not yet expressible in
+  markup.
 
 If you add any of these, update this file alongside the parser so the reference
 stays generated-from-code.

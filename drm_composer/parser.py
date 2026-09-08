@@ -10,7 +10,19 @@ Constrained, declarative markup.  Supported elements:
         <button id="ok" x="40" y="120" w="120" h="48">OK</button>
         <a href="next.html" x="200" y="120" w="120" h="48">Next</a>
       </layer>
+      <layer id="ink" z="20">
+        <path id="line" d="M 20 300 L 780 300" stroke="#e8e8f0" stroke-width="3"
+              progress="0">
+          <animate property="progress" from="0" to="1" start="0" duration="3000" />
+        </path>
+      </layer>
     </screen>
+
+A layer holding `<path>` elements compiles to a scene rather than to a bitmap:
+its content stays primitives all the way to the panel, so `progress` can put a
+stroke half way through being drawn. That needs a renderer with the `scene`
+capability (`drm_screen_lvgl`); the RGBA compositor refuses it rather than
+silently showing nothing.
 
 Values are parsed the forgiving way HTML is: lengths tolerate units and accept
 percentages of the screen (`x="50%"`, `w="20px"`); colors accept the full CSS
@@ -26,7 +38,9 @@ import re
 
 from html.parser import HTMLParser
 
-from .scene import Scene, LayerNode, BoxNode, TextNode, ImageNode, ButtonNode
+from .scene import (
+    AnimateNode, BoxNode, ButtonNode, ImageNode, LayerNode, PathNode, Scene, TextNode,
+)
 
 _NUM = re.compile(r"[-+]?\d*\.?\d+")
 
@@ -56,6 +70,15 @@ def _length(value, default, ref=None):
         return int(round(n / 100.0 * ref)) if ref is not None else int(round(n))
     n = _num(s)
     return default if n is None else int(round(n))
+
+
+def _float(value, default):
+    """Like `_length`, but keeps the fraction — `progress`, `opacity` and the
+    endpoints of an animation are not pixels."""
+    if value is None:
+        return default
+    n = _num(value.strip())
+    return default if n is None else float(n)
 
 
 def _bool(attrs, key, default=True):
@@ -89,6 +112,7 @@ class _SceneParser(HTMLParser):
         self._layer: LayerNode | None = None
         self._text: TextNode | None = None     # open <text> collecting char data
         self._button: ButtonNode | None = None  # open <button>/<a> collecting label
+        self._path: PathNode | None = None      # open <path> collecting <animate>
 
     # length helpers: x/w resolve % against screen width, y/h against height
     def _w(self, a, key, default=0):
@@ -135,6 +159,41 @@ class _SceneParser(HTMLParser):
                 color=a.get("color", "#ffffffff"),
             )
             self._layer.children.append(self._text)
+        elif tag == "path":
+            self._require_layer(tag)
+            self._path = PathNode(
+                id=a.get("id") or f"path{len(self._layer.children)}",
+                d=a.get("d", ""),
+                stroke=a.get("stroke", "#ffffffff"),
+                stroke_width=_float(a.get("stroke-width"), 2.0),
+                fill=a.get("fill", ""),
+                progress=_float(a.get("progress"), 1.0),
+                opacity=_float(a.get("opacity"), 1.0),
+            )
+            self._layer.children.append(self._path)
+        elif tag == "animate":
+            # Inside a <path> it animates that path; loose in a <layer> it must
+            # say what it animates.
+            target = a.get("target") or (self._path.id if self._path else "")
+            if not target:
+                raise ValueError("<animate> outside <path> needs a target")
+            animation = AnimateNode(
+                target=target,
+                property=a.get("property", "progress"),
+                frm=_float(a.get("from"), 0.0),
+                to=_float(a.get("to"), 1.0),
+                start=_length(a.get("start"), 0),
+                duration=_length(a.get("duration"), 1000),
+                easing=a.get("easing", "linear"),
+            )
+            if self._path is not None:
+                self._path.animations.append(animation)
+            else:
+                self._require_layer(tag)
+                owner = self._find_path(target)
+                if owner is None:
+                    raise ValueError(f"<animate> targets unknown path {target!r}")
+                owner.animations.append(animation)
         elif tag in ("button", "a"):
             self._require_layer(tag)
             # All three reuse the same interactive-layer machinery; only the
@@ -171,6 +230,8 @@ class _SceneParser(HTMLParser):
         elif tag in ("button", "a") and self._button is not None:
             self._button.label = self._button.label.strip()
             self._button = None
+        elif tag == "path":
+            self._path = None
         elif tag == "layer":
             self._layer = None
 
@@ -183,6 +244,13 @@ class _SceneParser(HTMLParser):
     def _require_layer(self, tag):
         if self._layer is None:
             raise ValueError(f"<{tag}> outside <layer>")
+
+    def _find_path(self, target):
+        for layer in self.scene.layers:
+            for node in layer.children:
+                if isinstance(node, PathNode) and node.id == target:
+                    return node
+        return None
 
 
 def parse_scene(html: str) -> Scene:
