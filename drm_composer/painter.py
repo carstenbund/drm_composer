@@ -16,7 +16,13 @@ from PIL import Image, ImageDraw, ImageFont, ImageColor
 
 from drm_screen.commands import CreateLayer, PlaceRawBuffer
 
+try:                                    # PlaceScene is newer than this package
+    from drm_screen.commands import PlaceScene
+except ImportError:                     # pragma: no cover - older drm_screen
+    PlaceScene = None
+
 from .scene import Scene, BoxNode, TextNode, ImageNode, ButtonNode
+from .scene_ir import emit_scene_json, layer_is_vector
 
 # Buttons sit above their layer's painted content (but well below the pointer).
 _BUTTON_Z_OFFSET = 1000
@@ -50,6 +56,23 @@ def paint_scene(scene: Scene) -> list:
     batch = []
 
     for layer in scene.layers:
+        # A layer of primitives is not painted at all: it is described, and the
+        # renderer draws it at the panel's own resolution, every frame, against
+        # the clock. Nothing here rasterises it, because rasterising is exactly
+        # what would take the movement out of it.
+        if layer_is_vector(layer):
+            if PlaceScene is None:
+                raise RuntimeError(
+                    "this drm_screen has no PlaceScene command; vector layers "
+                    "need drm_screen >= 0.2 and a renderer with the 'scene' "
+                    "capability (drm_screen_lvgl)"
+                )
+            batch.append(CreateLayer(name=layer.id, width=W, height=H,
+                                     z=layer.z, visible=layer.visible))
+            batch.append(PlaceScene(name=layer.id,
+                                    scene=emit_scene_json(scene, layer)))
+            continue
+
         canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         draw = ImageDraw.Draw(canvas)
 
