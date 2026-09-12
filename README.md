@@ -72,9 +72,11 @@ Full stack, bootstrap, and integration demo:
 ## Changes
 
 ```
-0.2.2   Documentation.  Relative links 404 on PyPI, where this README is the
-        project description -- including the one pointing at SYNTAX.md, which
-        the text calls the place to start.
+0.2.2   Documentation and packaging.  Relative links 404 on PyPI, where this
+        README is the project description -- including the one pointing at
+        SYNTAX.md, which the text calls the place to start.  The Author header
+        was empty, a {name, email} author mapping to Author-email alone.  The
+        summary said RGBA bitmaps only, predating vector scene layers.
 0.2.1   Documentation.  The README described this package as a rasteriser and
         never named the renderer <path> layers need, so the documented syntax
         failed with UnsupportedCommand against a default install.  Record
