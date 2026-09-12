@@ -72,12 +72,13 @@ Full stack, bootstrap, and integration demo:
 ## Changes
 
 ```
+0.2.2   Documentation.  Relative links 404 on PyPI, where this README is the
+        project description -- including the one pointing at SYNTAX.md, which
+        the text calls the place to start.
 0.2.1   Documentation.  The README described this package as a rasteriser and
         never named the renderer <path> layers need, so the documented syntax
-        failed with UnsupportedCommand against a default install.  Relative
-        links, which 404 on PyPI because the README is the project
-        description -- including the one pointing at SYNTAX.md, which the
-        text calls the place to start.  Record release history.
+        failed with UnsupportedCommand against a default install.  Record
+        release history.
 0.2.0   <path> and <animate>.  A layer of paths compiles to a scene document
         and travels as one PlaceScene command, staying primitives all the way
         to the panel instead of being rasterised.  Needs drm-screen >= 0.2 for
