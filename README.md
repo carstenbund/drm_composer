@@ -1,7 +1,7 @@
 # drm_composer
 
 Stateless scene-to-screen-command compiler. Parses a declarative HTML-like
-scene and emits commands for [`drm_screen`](../drm_screen) — most elements as
+scene and emits commands for [`drm_screen`](https://github.com/carstenbund/drm_screen) — most elements as
 **RGBA** bitmaps, a layer of `<path>` elements as a scene document that stays
 primitives all the way to the panel.
 
@@ -25,10 +25,10 @@ It holds **no** screen state, does **not** blend the final frame (that's
 
 ## Documentation
 
-- **[SYNTAX.md](SYNTAX.md)** — complete screen-HTML reference: every element,
+- **[SYNTAX.md](https://github.com/carstenbund/drm_composer/blob/main/SYNTAX.md)** — complete screen-HTML reference: every element,
   every attribute, accepted value formats, and behaviour. **Start here to write
   scenes.**
-- [outline.md](outline.md) — the design and where this package sits in the stack.
+- [outline.md](https://github.com/carstenbund/drm_composer/blob/main/outline.md) — the design and where this package sits in the stack.
 
 ## Install
 
@@ -74,8 +74,10 @@ Full stack, bootstrap, and integration demo:
 ```
 0.2.1   Documentation.  The README described this package as a rasteriser and
         never named the renderer <path> layers need, so the documented syntax
-        failed with UnsupportedCommand against a default install.  Record
-        release history.
+        failed with UnsupportedCommand against a default install.  Relative
+        links, which 404 on PyPI because the README is the project
+        description -- including the one pointing at SYNTAX.md, which the
+        text calls the place to start.  Record release history.
 0.2.0   <path> and <animate>.  A layer of paths compiles to a scene document
         and travels as one PlaceScene command, staying primitives all the way
         to the panel instead of being rasterised.  Needs drm-screen >= 0.2 for
@@ -91,9 +93,9 @@ Full stack, bootstrap, and integration demo:
 
 ## License
 
-**GPL-3.0-or-later** (see [LICENSE](LICENSE)). Use it freely under the GPL. For
+**GPL-3.0-or-later** (see [LICENSE](https://github.com/carstenbund/drm_composer/blob/main/LICENSE)). Use it freely under the GPL. For
 proprietary/closed use that cannot comply with the GPL, a separate commercial
 license is available — contact Carsten Bund <carstenbund@gmail.com>.
 
 Dependencies are permissive (BSD/MIT) and installed separately; their notices
-are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+are in [THIRD_PARTY_LICENSES.md](https://github.com/carstenbund/drm_composer/blob/main/THIRD_PARTY_LICENSES.md).
