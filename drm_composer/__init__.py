@@ -13,7 +13,9 @@ from .scene import (
     Scene, LayerNode, BoxNode, TextNode, ImageNode, ButtonNode, PathNode, AnimateNode,
 )
 from .parser import parse_scene
-from .scene_ir import emit_scene_ir, emit_scene_json, layer_is_vector
+from .scene_ir import (
+    emit_scene_ir, emit_scene_json, emit_screen_ir, emit_screen_json, layer_is_vector,
+)
 from .painter import paint_scene
 from .compositor import Compositor
 from .actions import Action, parse_action, Dispatcher
@@ -28,6 +30,7 @@ __all__ = [
     "Scene", "LayerNode", "BoxNode", "TextNode", "ImageNode", "ButtonNode",
     "PathNode", "AnimateNode",
     "parse_scene", "paint_scene", "Compositor",
-    "emit_scene_ir", "emit_scene_json", "layer_is_vector",
+    "emit_scene_ir", "emit_scene_json", "emit_screen_ir", "emit_screen_json",
+    "layer_is_vector",
     "Action", "parse_action", "Dispatcher", "__version__",
 ]

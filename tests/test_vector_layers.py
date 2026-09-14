@@ -12,8 +12,8 @@ import pytest
 
 from drm_composer import parse_scene
 from drm_composer.painter import paint_scene
-from drm_composer.scene import AnimateNode, BoxNode, PathNode
-from drm_composer.scene_ir import emit_scene_ir, layer_is_vector
+from drm_composer.scene import AnimateNode, ImageNode, PathNode
+from drm_composer.scene_ir import emit_scene_ir, emit_screen_ir, layer_is_vector
 
 HTML = """
 <screen width="800" height="480">
@@ -112,9 +112,63 @@ def test_a_vector_layer_is_placed_as_a_scene_and_a_box_as_pixels():
     assert document["layers"][0]["objects"][0]["d"] == "M 20 300 L 780 300"
 
 
-def test_a_layer_holds_pixels_or_primitives_but_not_both():
-    scene = parse_scene(HTML)
-    scene.layers[1].children.append(BoxNode(x=0, y=0, w=10, h=10))
+def test_boxes_and_text_share_a_layer_with_paths_as_primitives():
+    scene = parse_scene("""
+    <screen width="320" height="480">
+      <layer id="panel" z="5">
+        <box x="10" y="20" w="300" h="60" color="#3060a080" />
+        <text x="24" y="40" size="24" color="white">Nozzle 210</text>
+        <path id="rule" d="M 10 100 L 310 100" />
+      </layer>
+    </screen>
+    """)
+    batch = paint_scene(scene)
 
-    with pytest.raises(ValueError, match="mixes"):
+    assert [type(c).__name__ for c in batch] == ["CreateLayer", "PlaceScene"]
+    rect, text, path = json.loads(batch[1].scene)["layers"][0]["objects"]
+    assert rect == {"type": "rect", "id": "box0", "x": 10, "y": 20, "w": 300,
+                    "h": 60, "fill": "#3060a0", "opacity": pytest.approx(128 / 255, abs=1e-4)}
+    assert text == {"type": "text", "id": "text1", "content": "Nozzle 210",
+                    "font_id": "montserrat-24", "x": 24, "y": 40, "color": "#ffffff"}
+    assert path["type"] == "path"
+
+
+def test_pictures_and_buttons_have_no_scene_form():
+    scene = parse_scene(HTML)
+    scene.layers[1].children.append(ImageNode(src="logo.png"))
+
+    with pytest.raises(ValueError, match="mixes.*<img>"):
         paint_scene(scene)
+
+
+def test_the_whole_screen_compiles_to_one_document():
+    """What the ESP32 loads: one scene, every layer in it, ordered by z there."""
+    scene = parse_scene(HTML)
+    scene.layers[0].visible = False
+    document = emit_screen_ir(scene)
+
+    assert [(layer["id"], layer["z"]) for layer in document["layers"]] == [("bg", 0), ("ink", 20)]
+    background = document["layers"][0]["objects"][0]
+    assert background["type"] == "rect" and background["fill"] == "#101014"
+    assert background["visible"] is False
+    assert document["duration"] == 3500
+
+
+def test_an_unreadable_box_colour_is_transparent_as_in_the_painter():
+    scene = parse_scene("""
+    <screen width="10" height="10">
+      <layer id="a"><box w="10" h="10" color="no-such-colour" /></layer>
+    </screen>
+    """)
+    assert emit_screen_ir(scene)["layers"][0]["objects"][0]["opacity"] == 0.0
+
+
+def test_object_ids_must_be_unique_across_the_screen():
+    scene = parse_scene("""
+    <screen width="10" height="10">
+      <layer id="a"><path d="M 0 0 L 10 10" /></layer>
+      <layer id="b"><path d="M 0 10 L 10 0" /></layer>
+    </screen>
+    """)
+    with pytest.raises(ValueError, match="path0.*twice"):
+        emit_screen_ir(scene)

@@ -17,7 +17,10 @@ drm_composer  →  drm_screen  →  drm-display
 - Parses `screen` / `layer` / `box` / `text` / `img` / `raw-buffer`
 - Resolves layout (x, y, w, h, z, visibility)
 - Rasterizes to RGBA bitmaps
-- Compiles `<path>` / `<animate>` layers to a scene document instead
+- Compiles `<path>` / `<animate>` layers to a scene document instead, with any
+  `<box>` / `<text>` in them as primitives
+- Compiles a whole screen to one scene document (`emit_screen_json`) for a
+  single-scene player such as the ESP32 panel
 - Translates layers into `drm_screen` commands
 
 It holds **no** screen state, does **not** blend the final frame (that's

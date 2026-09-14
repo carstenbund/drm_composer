@@ -370,7 +370,7 @@ line draws itself rather than appearing.
 | `d` | `""` | path data, SVG's `d` grammar (`M`, `L`, `C`, `Z`, …) |
 | `stroke` | `#ffffffff` | full CSS colour range; reaches the renderer as `#rrggbb` |
 | `stroke-width` | `2` | fractional — not rounded to whole pixels |
-| `fill` | *(none)* | omitted means an unfilled stroke |
+| `fill` | *(none)* | carried into the scene document, but no current player draws it — paths are stroked only; use `<box>` for a filled rectangle |
 | `progress` | `1` | 0 = not drawn yet, 1 = fully drawn |
 | `opacity` | `1` | |
 
@@ -378,8 +378,13 @@ Coordinates are in the `<screen>`'s own units and are *not* resolved to panel
 pixels here: the document carries its design size, and the renderer fits it. One
 document is therefore correct on a 450×250 LCD and on a 1920×1080 screen.
 
-**A layer holds pixels or primitives, not both.** Mixing a `<box>` and a
-`<path>` in one layer raises — put them in adjacent layers, which is free.
+**`<box>` and `<text>` can share a layer with paths.** They have a scene form —
+`rect` and `text` objects — so a layer holding a path carries them as
+primitives too, with a box's alpha as the object's opacity and a text `size` as
+`font_id="montserrat-<size>"` (the renderer uses its nearest built-in size).
+`<img>` and `<button>` have no scene form: mixing either with a `<path>` raises —
+put them in an adjacent layer, which is free. A layer of only boxes and text
+stays pixels, so the RGBA compositor keeps drawing it.
 
 **Needs a renderer with the `scene` capability** (e.g. `drm_screen_lvgl`). The
 RGBA compositor raises `UnsupportedCommand` rather than showing nothing.
@@ -430,6 +435,12 @@ The document holds the objects and the animations that move them; the renderer
 evaluates it against the clock every frame and draws it at the panel's own
 resolution. It is sent once, and it is small — a few hundred bytes of path data
 against megabytes for the same picture rasterized, every frame.
+
+For a panel that loads one scene and has no layer commands — the ESP32 player —
+`emit_screen_json(parse_scene(html))` compiles **every** layer into a single
+document instead, layers kept by `z`, a hidden layer's objects carried with
+`visible: false`. Every element must then have a scene form (`<box>`, `<text>`,
+`<path>`), and object ids must be unique across the whole screen.
 
 `data` is the fully rasterized layer canvas: `width*height*4` bytes of
 **RGBA8888** (boxes, text, and images already drawn in). `drm_screen` owns the
