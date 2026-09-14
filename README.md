@@ -76,6 +76,15 @@ Full stack, bootstrap, and integration demo:
 ## Changes
 
 ```
+0.3.0   A whole screen compiles to one scene document, for a player that
+        loads a single scene -- the ESP32 panel (emit_screen_ir,
+        emit_screen_json).  <box> and <text> have scene forms, rect and text,
+        and may share a layer with paths: a layer mixing a <box> and a <path>
+        used to raise and now compiles to a scene.  In a whole-screen document
+        <img> becomes an LVGL binary image for the panel's SD card, fitted on
+        the host, named after its file and carried with its size and CRC32 so
+        a card from another build shows a missing picture, not a wrong one.
+        SYNTAX.md stops promising a filled <path>: no player draws fill.
 0.2.2   Documentation and packaging.  Relative links 404 on PyPI, where this
         README is the project description -- including the one pointing at
         SYNTAX.md, which the text calls the place to start.  The Author header

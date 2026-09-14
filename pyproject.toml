@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "drm-composer"
-version = "0.2.2"
+version = "0.3.0"
 description = "HTML-to-screen compiler for Raspberry Pi and embedded Linux: scene markup -> drm_screen layer commands, as RGBA bitmaps or vector scenes"
 readme = "README.md"
 requires-python = ">=3.10"
