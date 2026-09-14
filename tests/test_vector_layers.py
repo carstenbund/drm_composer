@@ -12,7 +12,7 @@ import pytest
 
 from drm_composer import parse_scene
 from drm_composer.painter import paint_scene
-from drm_composer.scene import AnimateNode, ImageNode, PathNode
+from drm_composer.scene import AnimateNode, ButtonNode, ImageNode, PathNode
 from drm_composer.scene_ir import emit_scene_ir, emit_screen_ir, layer_is_vector
 
 HTML = """
@@ -133,11 +133,19 @@ def test_boxes_and_text_share_a_layer_with_paths_as_primitives():
     assert path["type"] == "path"
 
 
-def test_pictures_and_buttons_have_no_scene_form():
+def test_a_button_has_no_scene_form():
+    scene = parse_scene(HTML)
+    scene.layers[1].children.append(ButtonNode(id="ok"))
+
+    with pytest.raises(ValueError, match="mixes.*<button>"):
+        paint_scene(scene)
+
+
+def test_a_picture_in_a_layer_scene_needs_a_whole_screen_document():
     scene = parse_scene(HTML)
     scene.layers[1].children.append(ImageNode(src="logo.png"))
 
-    with pytest.raises(ValueError, match="mixes.*<img>"):
+    with pytest.raises(ValueError, match="<img>.*whole-screen"):
         paint_scene(scene)
 
 

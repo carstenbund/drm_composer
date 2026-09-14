@@ -20,7 +20,8 @@ drm_composer  →  drm_screen  →  drm-display
 - Compiles `<path>` / `<animate>` layers to a scene document instead, with any
   `<box>` / `<text>` in them as primitives
 - Compiles a whole screen to one scene document (`emit_screen_json`) for a
-  single-scene player such as the ESP32 panel
+  single-scene player such as the ESP32 panel, with each `<img>` converted to an
+  LVGL binary image file for the panel's SD card
 - Translates layers into `drm_screen` commands
 
 It holds **no** screen state, does **not** blend the final frame (that's

@@ -270,6 +270,24 @@ Behaviour:
 <img src="/opt/kiosk/logo.png" x="240" y="20" w="64" h="64" />
 ```
 
+**In a whole-screen scene document** (`emit_screen_ir(scene, assets={}, base_dir=…)`,
+what the ESP32 panel loads) an `<img>` is not pasted: it becomes a picture the
+panel reads from its SD card.
+
+- The picture is fitted to `w`×`h` with `fit` **on the host**, then converted to
+  LVGL's binary image format — RGB565, plus an A8 alpha plane if any pixel is
+  not opaque — and put in the `assets` dict as `"<name>.bin"`.
+- `<name>` is the source's file stem (`logo.png` → `logo`); the same stem at a
+  second size becomes `logo-64x64`. Identical pictures are stored once.
+- The document carries `{"type": "image", "src": "<name>", "x", "y", "w", "h",
+  "size", "crc32"}`. The player draws the file only if its size and CRC32
+  match, so a card from another build shows a missing picture, never the wrong
+  one.
+- Sources are read relative to `base_dir`, and **a missing file raises** —
+  unlike the bitmap path, the build fails rather than the panel.
+- `fullscreen="always"` sizes it to the screen; `toggle` has no scene form (a
+  scene has nothing to tap).
+
 ---
 
 ### `<button>`

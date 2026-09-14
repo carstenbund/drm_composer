@@ -21,6 +21,7 @@ try:                                    # PlaceScene is newer than this package
 except ImportError:                     # pragma: no cover - older drm_screen
     PlaceScene = None
 
+from .lvgl_image import fit_image as _fit_image
 from .scene import Scene, BoxNode, TextNode, ImageNode, ButtonNode
 from .scene_ir import emit_scene_json, layer_is_vector
 
@@ -149,29 +150,6 @@ def _paste_image(canvas: Image.Image, node: ImageNode):
     if w and h:
         img = _fit_image(img, w, h, node.fit)
     canvas.alpha_composite(img, (x, y))
-
-
-def _fit_image(img: Image.Image, w: int, h: int, fit: str) -> Image.Image:
-    """Resize `img` into a w x h box per CSS object-fit. Returns a w x h image.
-
-    - fill    : stretch to w x h (aspect ignored) — the default
-    - contain : whole image fits inside, aspect kept, transparent letterbox
-    - cover   : image covers the box, aspect kept, overflow centre-cropped
-    """
-    iw, ih = img.size
-    if fit == "contain":
-        scale = min(w / iw, h / ih)
-        nw, nh = max(1, round(iw * scale)), max(1, round(ih * scale))
-        out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        out.alpha_composite(img.resize((nw, nh)), ((w - nw) // 2, (h - nh) // 2))
-        return out
-    if fit == "cover":
-        scale = max(w / iw, h / ih)
-        nw, nh = max(1, round(iw * scale)), max(1, round(ih * scale))
-        scaled = img.resize((nw, nh))
-        left, top = (nw - w) // 2, (nh - h) // 2
-        return scaled.crop((left, top, left + w, top + h))
-    return img.resize((w, h))   # fill
 
 
 def _paste_placeholder(canvas, x, y, w, h, src):

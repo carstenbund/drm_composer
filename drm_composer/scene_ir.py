@@ -42,8 +42,11 @@ from __future__ import annotations
 
 import itertools
 import json
+import pathlib
+import re
+import zlib
 
-from .scene import AnimateNode, BoxNode, PathNode, TextNode
+from .scene import AnimateNode, BoxNode, ImageNode, PathNode, TextNode
 
 __all__ = [
     "SCENE_IR_VERSION", "emit_scene_ir", "emit_scene_json",
@@ -79,21 +82,80 @@ def emit_scene_json(scene, layer, name: str | None = None) -> bytes:
     return _bytes(emit_scene_ir(scene, layer, name))
 
 
-def emit_screen_ir(scene, name: str = "screen") -> dict:
+def emit_screen_ir(scene, name: str = "screen", assets: dict | None = None,
+                   base_dir=".") -> dict:
     """Every layer of the screen -> one scene document, layers kept by z.
 
     For a player that loads a single scene and has no layer commands: the
     ESP32 panel. A hidden layer's objects are carried with `visible: false`.
+
+    `<img>` needs `assets`: each picture is fitted to its box, converted to
+    LVGL's binary image format and put in the dict as `{"<name>.bin": bytes}`,
+    and the document refers to it by that readable name with its size and
+    CRC32, so a player can tell a file that belongs to another build. Sources
+    are read relative to `base_dir`. A dict shared across several screens
+    stores an identical picture once.
     """
-    return _document(scene, scene.layers, name)
+    images = None if assets is None else _ImageAssets(assets, base_dir)
+    return _document(scene, scene.layers, name, images)
 
 
-def emit_screen_json(scene, name: str = "screen") -> bytes:
+def emit_screen_json(scene, name: str = "screen", assets: dict | None = None,
+                     base_dir=".") -> bytes:
     """The whole-screen document as bytes, ready to embed or send."""
-    return _bytes(emit_screen_ir(scene, name))
+    return _bytes(emit_screen_ir(scene, name, assets, base_dir))
 
 
-def _document(scene, layers, name: str) -> dict:
+class _ImageAssets:
+    """Pictures for a scene: converted once, named for people, checked by CRC."""
+
+    def __init__(self, store: dict, base_dir):
+        self.store = store
+        self.base_dir = pathlib.Path(base_dir)
+
+    def add(self, node, serial, scene) -> dict:
+        from PIL import Image
+
+        from .lvgl_image import fit_image, to_lvgl_bin
+
+        if node.fullscreen == "always":
+            x, y, w, h = 0, 0, scene.width, scene.height
+        else:
+            x, y, w, h = node.x, node.y, node.w, node.h
+        path = self.base_dir / node.src
+        try:
+            picture = Image.open(path).convert("RGBA")
+        except OSError as exc:
+            raise ValueError(f"<img src={node.src!r}>: cannot read {path}: {exc}") from exc
+        if w and h:
+            picture = fit_image(picture, w, h, node.fit)
+
+        data = to_lvgl_bin(picture)
+        name = self._name(node.src, picture.size, data)
+        self.store[f"{name}.bin"] = data
+        return {
+            "type": "image",
+            "id": f"img{next(serial)}",
+            "x": x, "y": y, "w": picture.width, "h": picture.height,
+            "src": name,
+            "size": len(data),
+            "crc32": zlib.crc32(data),
+        }
+
+    def _name(self, src: str, size, data: bytes) -> str:
+        """The source's stem; its size appended only when that stem already
+        names different bytes -- the same picture drawn at two sizes."""
+        stem = re.sub(r"[^A-Za-z0-9_-]+", "_", pathlib.PurePath(src).stem)[:40] or "image"
+        sized = f"{stem}-{size[0]}x{size[1]}"
+        candidates = [stem, sized] + [f"{sized}-{n}" for n in range(2, 100)]
+        for candidate in candidates:
+            existing = self.store.get(f"{candidate}.bin")
+            if existing is None or existing == data:
+                return candidate
+        raise ValueError(f"too many different pictures named {stem!r}")
+
+
+def _document(scene, layers, name: str, images: "_ImageAssets | None" = None) -> dict:
     serial = itertools.count()
     seen: set[str] = set()
     out_layers = []
@@ -102,13 +164,21 @@ def _document(scene, layers, name: str) -> dict:
     for layer in layers:
         objects = []
         for node in layer.children:
-            if not isinstance(node, _SCENE_FORM):
+            if isinstance(node, ImageNode) and images is not None:
+                obj = images.add(node, serial, scene)
+            elif isinstance(node, _SCENE_FORM):
+                obj = _object(node, serial)
+            elif isinstance(node, ImageNode):
+                raise ValueError(
+                    f"layer {layer.id!r}: <img> becomes a scene asset only in a "
+                    f"whole-screen document -- emit_screen_ir(scene, assets={{}})"
+                )
+            else:
                 raise ValueError(
                     f"layer {layer.id!r} mixes primitives with pixels: "
-                    f"<{_tag(node)}> has no scene form (only <box>, <text> "
-                    f"and <path> do) -- give it a layer of its own"
+                    f"<{_tag(node)}> has no scene form (only <box>, <text>, "
+                    f"<path>, and <img> with assets do) -- give it a layer of its own"
                 )
-            obj = _object(node, serial)
             if obj["id"] in seen:
                 raise ValueError(
                     f"object id {obj['id']!r} is used twice; animations find "
